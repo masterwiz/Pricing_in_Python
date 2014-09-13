@@ -2,7 +2,7 @@ import numpy as np
 import scipy.stats as ss
 import time
 
-def BinomialTreeVer1(type, S0, K, r, sigma, T, N=2000):
+def BinomialTree(type, S0, K, r, sigma, T, N=10):
     # time frame
     deltaT = T / N
 
@@ -10,23 +10,35 @@ def BinomialTreeVer1(type, S0, K, r, sigma, T, N=2000):
     u = np.exp(sigma * np.sqrt(deltaT))
     d = 1 / u
 
-    # first version we want to do this in a matrix
-    # this could be really slow
-    fs = [[ 0.0 for j in range(i + 1)] for i in range(N + 1)]
+    fs = np.array([np.maximum(S0 * u ** (N - i) * d ** i - K, 0) for i in range(N + 1)])
 
     disc = np.exp(r * deltaT)
-    p = (a - d) / (u - d)
+    p = (disc - d) / (u - d)
+    
+    #step = N + 1
+    #while True:
+    #    step -= 1
+    #    for i in range(step):
+    #        # this is where time spent because iteration and two while loop
+    #        # if we can make this a matrix operation
+    #        fs[i] = np.exp(-r * deltaT) * (p * fs[i] + (1 - p) * fs[i + 1])
+    #    if i == 0:
+    #        break
+    #    if i%100==0:
+    #        print("processing")
+    
+    # much faster without iteration, using matrix
+    for i in range(N): # we simply rollback n steps
+        fs[:-1] = np.exp(-r*deltaT)*(p*fs[:-1]+(1-p)*fs[1:])
 
-    for j in range(i+1):
-        if type == 'c':
-            fs[N][j] = max(S0*u**j*d**(N-j)-k,0.0)
-        else:
-            fs[N][j] = max(-S0*u**j*d**(N-j)+k,0.0)
-
-    for i in range(N-1, -1, -1):
-        for j in range(i + 1):
-            fs[i][j] = np.exp(-r * deltaT) * (p * fs[i + 1][j + 1] + (1-p) * fs[i + 1][j])
+           
+    return fs[0]
 
 
-    return fs[0][0]
 
+
+if __name__ == "__main__":
+    t = time.time()
+    print(BinomialTree('c', 100, 100, 0.1, 0.3, 3, 5000))
+    elapsed = time.time() - t
+    print(elapsed)
